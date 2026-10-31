@@ -1,3 +1,4 @@
+"use client";
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -5,6 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { X } from "lucide-react";
+import { calendarInputValue } from "../app/model";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -33,16 +35,55 @@ export function Button({
     <Comp className={cn(variants({ variant, size }), className)} {...props} />
   );
 }
-export function Input({ className, ...props }: React.ComponentProps<"input">) {
-  return <input className={cn("ui-input", className)} {...props} />;
+export function Input({ className, type, value, ...props }: React.ComponentProps<"input">) {
+  const calendar = type === "date" || type === "datetime-local";
+  return <input className={cn("ui-input", className)} type={type}
+    value={calendar && typeof value === "string" ? calendarInputValue(value, type === "datetime-local") : value}
+    {...props} />;
 }
-export function Table({ className, ...props }: React.ComponentProps<"table">) {
+export type TableColumns = {
+  name: string;
+  labels: string[];
+  locked: string[];
+  hidden: string[];
+  onChange: (hidden: string[]) => void;
+};
+const HiddenColumns = React.createContext<number[]>([]);
+function rowCells(children: React.ReactNode): React.ReactElement<React.ComponentProps<"td">>[] {
+  return React.Children.toArray(children).flatMap((child) => {
+    if (!React.isValidElement<React.ComponentProps<"td">>(child)) return [];
+    return child.type === React.Fragment ? rowCells(child.props.children) : [child];
+  });
+}
+export function Table({ className, columns, ...props }: React.ComponentProps<"table"> & { columns?: TableColumns }) {
+  const hidden = columns?.labels.flatMap((label, index) =>
+    columns.hidden.includes(label) && !columns.locked.includes(label) ? [index] : []) || [];
   return (
-    <table
-      data-slot="table"
-      className={cn("w-full caption-bottom text-xs", className)}
-      {...props}
-    />
+    <HiddenColumns.Provider value={hidden}>
+      {columns && (
+        <details className="column-picker">
+          <summary aria-label={`${columns.name} columns`}>Columns</summary>
+          <div className="column-options" role="group" aria-label={`${columns.name} column visibility`}>
+            {columns.labels.map((label) => (
+              <label key={label}>
+                <input type="checkbox" checked={!columns.hidden.includes(label) || columns.locked.includes(label)}
+                  disabled={columns.locked.includes(label)}
+                  onChange={(event) => columns.onChange(event.target.checked
+                    ? columns.hidden.filter((item) => item !== label)
+                    : [...columns.hidden, label])} />
+                {label}
+              </label>
+            ))}
+            <Button type="button" size="sm" onClick={() => columns.onChange([])}>Reset Columns</Button>
+          </div>
+        </details>
+      )}
+      <table
+        data-slot="table"
+        className={cn("w-full caption-bottom text-xs", className)}
+        {...props}
+      />
+    </HiddenColumns.Provider>
   );
 }
 export function TableHeader({
@@ -81,7 +122,16 @@ export function TableFooter({
     />
   );
 }
-export function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
+export function TableRow({ className, children, ...props }: React.ComponentProps<"tr">) {
+  const hidden = React.useContext(HiddenColumns);
+  let position = 0;
+  const cells = hidden.length ? rowCells(children).map((cell, index) => {
+    const span = cell.props.colSpan || 1;
+    const visible = Array.from({ length: span }, (_, offset) => position + offset)
+      .filter((column) => !hidden.includes(column)).length;
+    position += span;
+    return visible ? React.cloneElement(cell, { key: index, colSpan: visible }) : null;
+  }) : children;
   return (
     <tr
       data-slot="table-row"
@@ -90,7 +140,7 @@ export function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
         className,
       )}
       {...props}
-    />
+    >{cells}</tr>
   );
 }
 export function TableHead({ className, ...props }: React.ComponentProps<"th">) {

@@ -12,8 +12,9 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  type TableColumns,
 } from "./ui";
-import { money, number, type Row } from "../app/model";
+import { money, number, formatCalendarDate, type Row } from "../app/model";
 
 function CellInput({
   label,
@@ -89,6 +90,9 @@ export function CargoTable({
   onEdit,
   onDelete,
   onDeleteMany,
+  columns,
+  transporters = [],
+  vehicles = [],
 }: {
   rows: Row[];
   exp: boolean;
@@ -98,6 +102,9 @@ export function CargoTable({
   onEdit: (r: Row) => void;
   onDelete: (id: string) => void;
   onDeleteMany: (ids: string[]) => void;
+  columns?: TableColumns;
+  transporters?: string[];
+  vehicles?: string[];
 }) {
   const [selected, setSelected] = useState<string[]>([]);
   const packages = rows.reduce((a, r) => a + number(r.packages), 0),
@@ -132,9 +139,9 @@ export function CargoTable({
                 <TableCell>{r.number}</TableCell>
                 <TableCell>{r.size}</TableCell>
                 <TableCell>{r.seal}</TableCell>
-                <TableCell>{r.stuffingDate || "06-Sep-2026"}</TableCell>
+                <TableCell>{formatCalendarDate(r.stuffingDate ?? "06-Sep-2026")}</TableCell>
                 <TableCell>{money(number(r.vgm))}</TableCell>
-                <TableCell>{r.gateIn || "–"}</TableCell>
+                <TableCell>{formatCalendarDate(r.gateIn)}</TableCell>
                 <TableCell>{r.terminal || "APM Mundra"}</TableCell>
                 <TableCell>
                   <Badge tone={r.status === "Stuffed" ? "green" : "blue"}>
@@ -156,8 +163,13 @@ export function CargoTable({
   const editable = !compact && !operations;
   return (
     <div className={`cargo-data-table ${compact ? "read-only" : "editable"}`}>
+      {!exp && <>
+        <datalist id="container-transporters">{transporters.map((value) => <option key={value} value={value} />)}</datalist>
+        <datalist id="container-vehicles">{vehicles.map((value) => <option key={value} value={value} />)}</datalist>
+      </>}
       <div className="table-scroll">
         <Table
+          columns={columns}
           aria-label={
             compact
               ? "Container summary"
@@ -217,6 +229,7 @@ export function CargoTable({
               <TableHead className="status-cell">
                 {exp ? "Status" : "IMDG"}
               </TableHead>
+              {!exp && <><TableHead>Transporter</TableHead><TableHead>Vehicle Number</TableHead></>}
               {!compact && (
                 <TableHead className="actions-cell">Actions</TableHead>
               )}
@@ -375,6 +388,15 @@ export function CargoTable({
                       </Badge>
                     )}
                   </TableCell>
+                  {!exp && (["transporter", "vehicle"] as const).map((key) => (
+                    <TableCell key={key}>
+                      {editable ? <Input className="table-input transport-input"
+                        aria-label={`${key === "transporter" ? "Transporter" : "Vehicle number"} row ${i + 1}`}
+                        list={key === "transporter" ? "container-transporters" : "container-vehicles"}
+                        value={r[key] || ""} onChange={(event) => change(key, event.target.value)}
+                      /> : r[key] || "–"}
+                    </TableCell>
+                  ))}
                   {!compact && (
                     <TableCell className="actions-cell">
                       <span className="row-actions">
@@ -417,7 +439,7 @@ export function CargoTable({
               <TableCell className="numeric-cell">
                 {exp ? money(vgm) : vgm.toFixed(2)}
               </TableCell>
-              <TableCell colSpan={compact ? 1 : 3} />
+              <TableCell colSpan={(compact ? 1 : 3) + (exp ? 0 : 2)} />
             </TableRow>
           </TableFooter>
         </Table>

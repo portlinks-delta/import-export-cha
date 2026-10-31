@@ -67,6 +67,7 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  type TableColumns,
 } from "../components/ui";
 import { CargoTable } from "../components/cargo-table";
 import {
@@ -77,6 +78,10 @@ import {
   number,
   money,
   totals,
+  importMilestones,
+  importCustomsMilestones,
+  formatCalendarDate,
+  calendarInputType,
   type Job,
   type JobType,
   type Row,
@@ -191,6 +196,7 @@ type Editor = {
   fields: [string, string][];
   values: Row;
   save: (r: Row) => void;
+  suggestions?: Record<string, string[]>;
 };
 const FormContext = createContext<{
   f: Record<string, string>;
@@ -262,20 +268,18 @@ function Field({
       ) : (
         <div className="input-wrap">
           <Input
+            type={calendarInputType(name)}
             aria-label={name}
             aria-invalid={errors.includes(name)}
             value={val}
             disabled={disabled}
             onChange={(e) => field(name, e.target.value)}
             placeholder={
-              /Date|Cut-off|ETA|ETD|ATA|ATD/.test(name)
+              calendarInputType(name)
                 ? "Select date"
                 : `Enter ${name.toLowerCase()}`
             }
           />
-          {/Date|Cut-off|ETA|ETD|ATA|ATD/.test(name) && (
-            <CalendarDays size={15} />
-          )}
         </div>
       )}
     </label>
@@ -357,6 +361,19 @@ export default function Dashboard() {
     update({ fields: { ...f, [name]: value } });
     setErrors((e) => e.filter((n) => n !== name));
   }
+  function tableColumns(name: string, labels: string[], locked: string[]): TableColumns | undefined {
+    if (exp || step === 7) return undefined;
+    return {
+      name, labels, locked,
+      hidden: job.hiddenColumns?.[name] || [],
+      onChange: (hidden) => update({ hiddenColumns: { ...job.hiddenColumns, [name]: hidden } }),
+    };
+  }
+  const transporterOptions = [...new Set([
+    ...job.parties.filter((party) => party.role === "Transporter").map((party) => party.name),
+    ...job.containers.map((row) => row.transporter),
+  ].filter(Boolean))];
+  const vehicleOptions = [...new Set(job.containers.map((row) => row.vehicle).filter(Boolean))];
   function choose(t: JobType) {
     setType(t);
     setStep(0);
@@ -534,7 +551,10 @@ export default function Dashboard() {
               ["status", "Payment Status"],
               ["remarks", "Remarks"],
             ];
+    if (!exp && key === "containers") specs.push(["transporter", "Transporter"], ["vehicle", "Vehicle Number"]);
+    if (!exp && (key === "income" || key === "expense")) specs.push(["date", "Date"]);
     setEditor({
+      suggestions: !exp && key === "containers" ? { transporter: transporterOptions, vehicle: vehicleOptions } : {},
       title: `${row ? "Edit" : "Add"} ${key === "containers" ? "Container" : key === "duties" ? "Duty" : key === "income" ? "Income" : "Expense"}`,
       fields: specs,
       values: row
@@ -640,6 +660,12 @@ export default function Dashboard() {
         exp={exp}
         compact={compact}
         operations={operations}
+        transporters={transporterOptions}
+        vehicles={vehicleOptions}
+        columns={compact || operations ? undefined : tableColumns("Cargo", [
+          "Select", "Sr. No.", "Container No.", "Size/Type", "Seal No.", "No. of Packages",
+          "Gross Weight", "Volume", "FCL/LCL", "IMDG", "Transporter", "Vehicle Number", "Actions",
+        ], ["Select", "Container No.", "Actions"])}
         onChange={(id, key, value) =>
           update({
             containers: job.containers.map((r) =>
@@ -668,13 +694,16 @@ export default function Dashboard() {
     const t = totals(job[kind]);
     return (
       <div className="table-scroll">
-        <Table>
+        <Table columns={compact ? undefined : tableColumns(kind === "income" ? "Income" : "Expenses",
+          ["#", "Particulars", "Date", kind === "income" ? "Service Type" : "Expense Type", "Quantity", "Rate (INR)", "Amount (INR)", "Remarks", "Actions"],
+          ["Particulars", "Actions"])}>
           <TableHeader>
             <TableRow>
               <TableHead>#</TableHead>
               <TableHead>
                 Particulars <b>*</b>
               </TableHead>
+              {!exp && <TableHead>Date</TableHead>}
               {!compact && (
                 <>
                   <TableHead>
@@ -712,6 +741,7 @@ export default function Dashboard() {
                 <TableRow key={r.id}>
                   <TableCell>{i + 1}</TableCell>
                   <TableCell>{r.particulars}</TableCell>
+                  {!exp && <TableCell>{formatCalendarDate(r.date)}</TableCell>}
                   {!compact && (
                     <>
                       <TableCell>{r.category}</TableCell>
@@ -748,7 +778,7 @@ export default function Dashboard() {
           </TableBody>
           <TableFooter>
             <TableRow>
-              <TableCell colSpan={compact ? 2 : 5}>
+              <TableCell colSpan={(compact ? 2 : 5) + (exp ? 0 : 1)}>
                 Total{" "}
                 {compact ? (kind === "income" ? "Income" : "Expense") : ""}
               </TableCell>
@@ -790,7 +820,7 @@ export default function Dashboard() {
             <small>PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (Max 10 MB each)</small>
           </button>
           <div className="table-scroll">
-            <Table>
+            <Table columns={tableColumns("Documents", ["#", "File Name", "Type", "Size", "Uploaded By", "Date", "Actions"], ["File Name", "Actions"])}>
               <TableHeader>
                 <TableRow>
                   <TableHead>#</TableHead>
@@ -810,7 +840,7 @@ export default function Dashboard() {
                     <TableCell className="red-text">{r.type}</TableCell>
                     <TableCell>{r.size}</TableCell>
                     <TableCell>Rahul Sharma</TableCell>
-                    <TableCell>{r.date}</TableCell>
+                    <TableCell>{formatCalendarDate(r.date)}</TableCell>
                     <TableCell>
                       <span className="row-actions">
                         <Button
@@ -898,17 +928,7 @@ export default function Dashboard() {
           "Vessel Sailed",
           "BL Issued",
         ]
-      : [
-          "Documentation",
-          "BE Filed",
-          "Assessment",
-          "Examination",
-          "Duty Payment",
-          "OOC",
-          "Gate-out",
-          "Delivery",
-          "Job Completed",
-        ];
+      : importMilestones;
     return (
       <div className={`timeline ${small ? "mini" : ""}`}>
         {labels.map((l, i) => (
@@ -1044,7 +1064,7 @@ export default function Dashboard() {
             ]}
           />
         </Panel>
-        <Documents />
+        {Documents({})}
       </>
     ) : (
       <>
@@ -1223,7 +1243,7 @@ export default function Dashboard() {
                 </Button>
               </div>
               <div className="table-scroll">
-                <Table>
+                <Table columns={tableColumns("Voyages", ["Select", "Vessel Name", "IMO No.", "Voyage No.", "Call No.", "POL", "POD", "ETA", "ETD", "Shipping Line", "Terminal"], ["Select", "Vessel Name"])}>
                   <TableHeader>
                     <TableRow>
                       {[
@@ -1488,14 +1508,14 @@ export default function Dashboard() {
                     <TableRow key={r.id}>
                       <TableCell>{i + 1}</TableCell>
                       <TableCell>{r.number}</TableCell>
-                      <TableCell>{r.pickup || "05-Sep-2026"}</TableCell>
+                      <TableCell>{formatCalendarDate(r.pickup ?? "05-Sep-2026")}</TableCell>
                       <TableCell>
                         {r.stuffingLocation || "Exporter Factory"}
                       </TableCell>
-                      <TableCell>{r.stuffingDate || "06-Sep-2026"}</TableCell>
+                      <TableCell>{formatCalendarDate(r.stuffingDate ?? "06-Sep-2026")}</TableCell>
                       <TableCell>{money(number(r.vgm))}</TableCell>
                       <TableCell>{r.terminal || "APM Mundra"}</TableCell>
-                      <TableCell>{r.gateIn || "09-Sep-2026"}</TableCell>
+                      <TableCell>{formatCalendarDate(r.gateIn ?? "09-Sep-2026")}</TableCell>
                       <TableCell>{r.remarks || "–"}</TableCell>
                       <TableCell>
                         <Actions edit={() => editRow("containers", r)} />
@@ -1628,7 +1648,7 @@ export default function Dashboard() {
         }
       >
         <div className="table-scroll">
-          <Table>
+          <Table columns={tableColumns("Duties", ["Sr. No.", "Duty Head", "Amount (INR)", "Challan No.", "Challan Date", "Payment Status", "Payment Date", "Remarks", "Actions"], ["Duty Head", "Actions"])}>
             <TableHeader>
               <TableRow>
                 {[
@@ -1653,11 +1673,11 @@ export default function Dashboard() {
                   <TableCell>{r.head}</TableCell>
                   <TableCell>{money(number(r.amount))}</TableCell>
                   <TableCell>{r.challan}</TableCell>
-                  <TableCell>{r.date}</TableCell>
+                  <TableCell>{formatCalendarDate(r.date)}</TableCell>
                   <TableCell>
                     <Status value={r.status} />
                   </TableCell>
-                  <TableCell>{r.payment}</TableCell>
+                  <TableCell>{formatCalendarDate(r.payment)}</TableCell>
                   <TableCell>{r.remarks}</TableCell>
                   <TableCell>
                     <Actions
@@ -1758,7 +1778,7 @@ export default function Dashboard() {
             <Field name="Customs Remarks" area />
           </Panel>
         </div>
-        <Documents title="Supporting Documents" />
+        {Documents({ title: "Supporting Documents" })}
       </>
     ) : (
       <>
@@ -1803,7 +1823,7 @@ export default function Dashboard() {
             names={["Exam Location", "Examiner Name", "Exam Remarks"]}
           />
         </Panel>
-        <DutyTable />
+        {DutyTable()}
         <Panel title="Out of Charge (OOC) / Delivery" icon={Truck}>
           <Fields
             cols={7}
@@ -1818,6 +1838,7 @@ export default function Dashboard() {
             ]}
           />
         </Panel>
+        {Documents({ title: "Supporting Documents" })}
       </>
     );
   }
@@ -1874,7 +1895,7 @@ export default function Dashboard() {
           </Button>
         </div>
         <div className="table-scroll">
-          <Table aria-label="Gate in and gate out records">
+          <Table aria-label="Gate in and gate out records" columns={tableColumns("Gate records", ["Sr.", "Container No.", "Activity", "Date & Time", "Location", "Remarks", "Actions"], ["Container No.", "Actions"])}>
             <TableHeader>
               <TableRow>
                 {[
@@ -1896,7 +1917,7 @@ export default function Dashboard() {
                   <TableCell>{i + 1}</TableCell>
                   <TableCell>{r.container}</TableCell>
                   <TableCell>{r.activity}</TableCell>
-                  <TableCell>{r.date || "–"}</TableCell>
+                  <TableCell>{formatCalendarDate(r.date)}</TableCell>
                   <TableCell>{r.location}</TableCell>
                   <TableCell>{r.remarks}</TableCell>
                   <TableCell>
@@ -2070,9 +2091,9 @@ export default function Dashboard() {
           <>
             <div className="fields operation-columns">
               <Panel
-                title={`Current Activity - ${["Documentation", "BE Filed", "Assessment", "Examination", "Duty Payment", "OOC", "Gate-out", "Delivery", "Job Completed"][Math.min(job.activity, 8)]}`}
+                title={`Current Activity - ${importMilestones[Math.min(job.activity, importMilestones.length - 1)]}`}
                 icon={FileText}
-                action={<Status value="In Progress" />}
+                action={<Status value={job.activity >= importMilestones.length ? "Completed" : "In Progress"} />}
               >
                 <Fields
                   cols={3}
@@ -2094,7 +2115,7 @@ export default function Dashboard() {
                   <Button
                     className="success"
                     onClick={() => {
-                      update({ activity: Math.min(job.activity + 1, 9) });
+                      update({ activity: Math.min(job.activity + 1, importMilestones.length) });
                       setToast("Activity completed");
                     }}
                   >
@@ -2155,17 +2176,7 @@ export default function Dashboard() {
           "Vessel Sailed",
           "BL Issued",
         ]
-      : [
-          "Documentation",
-          "BE Filed",
-          "Assessment",
-          "Examination",
-          "Duty Payment",
-          "OOC",
-          "Gate-out",
-          "Delivery",
-          "Job Completed",
-        ];
+      : importMilestones;
     return (
       <div className="table-scroll">
         <Table>
@@ -2252,7 +2263,7 @@ export default function Dashboard() {
             </>
           }
         >
-          <FinancialTable kind="income" />
+          {FinancialTable({ kind: "income" })}
         </Panel>
         <Panel
           title="Expense Details"
@@ -2274,7 +2285,7 @@ export default function Dashboard() {
             </>
           }
         >
-          <FinancialTable kind="expense" />
+          {FinancialTable({ kind: "expense" })}
         </Panel>
         {!exp && (
           <Panel title="Payment Status" icon={BriefcaseBusiness}>
@@ -2318,7 +2329,7 @@ export default function Dashboard() {
                   ? job.cargo
                   : n === "Job No."
                     ? job.created || "Auto Generate"
-                    : f[n] || "–"}
+                    : calendarInputType(n) ? formatCalendarDate(f[n]) : f[n] || "–"}
             </dd>
           </div>
         ))}
@@ -2497,12 +2508,12 @@ export default function Dashboard() {
           <StatCards />
           {!exp && (
             <div className="fields cols-2">
-              <FinancialTable kind="income" compact />
-              <FinancialTable kind="expense" compact />
+              {FinancialTable({ kind: "income", compact: true })}
+              {FinancialTable({ kind: "expense", compact: true })}
             </div>
           )}
         </Panel>
-        {exp && <Documents title="Documents" />}
+        {exp && Documents({ title: "Documents" })}
       </div>
     );
   }
@@ -2573,7 +2584,7 @@ export default function Dashboard() {
               } else if (x === "View Full Voyage Details") {
                 setMessage({
                   title: "Voyage Details",
-                  text: `${f["Vessel Name"]} · ${f["Voyage No."]} · ${f["Port of Loading (POL)"]} → ${f["Port of Discharge (POD)"]} · ETA ${f["ETA (at POD)"]}`,
+                  text: `${f["Vessel Name"]} · ${f["Voyage No."]} · ${f["Port of Loading (POL)"]} → ${f["Port of Discharge (POD)"]} · ETA ${formatCalendarDate(f["ETA (at POD)"])}`,
                 });
               } else demo(x);
             }}
@@ -2606,6 +2617,7 @@ export default function Dashboard() {
           <dl>
             {[
               ["Job No.", job.created || "Auto Generate"],
+              ["Job Date", formatCalendarDate(f["Job Date"])],
               ["Job Type", type || ""],
               ["Cargo Type", job.cargo],
               ["Client", f[exp ? "Client / Exporter" : "Client"]],
@@ -2613,7 +2625,6 @@ export default function Dashboard() {
                 exp ? "Booking No." : "BL No.",
                 f[exp ? "Booking No." : "BL No."],
               ],
-              ["Job Date", f["Job Date"]],
               ...(step > 0
                 ? [
                     ["Vessel", f["Vessel Name"]],
@@ -2635,6 +2646,7 @@ export default function Dashboard() {
                     : "In Progress",
               ],
               ["Assigned To", f["Assigned To"]],
+              ["Updated By", "Rahul Sharma"],
             ].map(([label, value], i) => {
               const Icon = [
                 ClipboardList,
@@ -2777,30 +2789,34 @@ export default function Dashboard() {
               <h3>Customs Progress</h3>
             </div>
             <div className="workflow">
-              {[
+              {(exp ? [
                 "BE Filed",
                 "Assessment",
                 "Examination",
                 "Duty Payment",
                 "OOC",
                 "Delivery",
-              ].map((s, i) => (
+              ] : importCustomsMilestones).map((s, i) => {
+                const milestone = importMilestones.indexOf(s);
+                const done = exp ? i < 3 : milestone < job.activity;
+                const current = !exp && milestone === job.activity;
+                return (
                 <button
                   key={s}
-                  className={i < 3 ? "done" : ""}
+                  className={done ? "done" : current ? "active" : ""}
                   onClick={() =>
-                    setToast(`${s}: ${i < 3 ? "Completed" : "Pending"}`)
+                    setToast(`${s}: ${done ? "Completed" : current ? "In Progress" : "Pending"}`)
                   }
                 >
-                  <span>{i < 3 ? <Check size={14} /> : i + 1}</span>
+                  <span>{done ? <Check size={14} /> : i + 1}</span>
                   <div>
                     <strong>{s}</strong>
                     <small>
-                      {i < 3 ? "09-Sep-2026 · By Rahul Sharma" : "Pending"}
+                      {exp && done ? "09-Sep-2026 · By Rahul Sharma" : done ? "Completed" : current ? "In Progress" : "Pending"}
                     </small>
                   </div>
                 </button>
-              ))}
+              ); })}
             </div>
           </section>
         ) : null}
@@ -3038,6 +3054,19 @@ export default function Dashboard() {
               </div>
               <main className="workspace">
                 <div className="left-column">
+                  <nav className="steps" aria-label="Job creation steps">
+                    {steps.map((s, i) => (
+                      <button
+                        aria-current={step === i ? "step" : undefined}
+                        className={step === i ? "active" : ""}
+                        key={s}
+                        onClick={() => go(i)}
+                      >
+                        <span>{i + 1}</span>
+                        <strong>{s}</strong>
+                      </button>
+                    ))}
+                  </nav>
                   <section className="job-selector">
                     <div>
                       <label>
@@ -3092,19 +3121,6 @@ export default function Dashboard() {
                     />
                     <Field name="Job Date" />
                   </section>
-                  <nav className="steps" aria-label="Job creation steps">
-                    {steps.map((s, i) => (
-                      <button
-                        aria-current={step === i ? "step" : undefined}
-                        className={step === i ? "active" : ""}
-                        key={s}
-                        onClick={() => go(i)}
-                      >
-                        <span>{i + 1}</span>
-                        <strong>{s}</strong>
-                      </button>
-                    ))}
-                  </nav>
                   {job.cargo !== "Containerised" && (
                     <div className="cargo-notice">
                       <Box size={16} />
@@ -3199,7 +3215,7 @@ export default function Dashboard() {
                                     if (
                                       !Number.isInteger(n) ||
                                       n < 1 ||
-                                      n > (exp ? 11 : 9)
+                                      n > (exp ? 11 : importMilestones.length)
                                     ) {
                                       setToast(
                                         "Enter a valid milestone number",
@@ -3235,17 +3251,7 @@ export default function Dashboard() {
                                         "Vessel Sailed",
                                         "BL Issued",
                                       ]
-                                    : [
-                                        "Documentation",
-                                        "BE Filed",
-                                        "Assessment",
-                                        "Examination",
-                                        "Duty Payment",
-                                        "OOC",
-                                        "Gate-out",
-                                        "Delivery",
-                                        "Job Completed",
-                                      ]
+                                    : importMilestones
                                   )
                                     .map(
                                       (x, i) =>
@@ -3364,6 +3370,8 @@ export default function Dashboard() {
                   <label className="field" key={key}>
                     <span>{label}</span>
                     <Input
+                      type={calendarInputType(label) || "text"}
+                      list={editor.suggestions?.[key] ? `editor-${key}-options` : undefined}
                       value={editor.values[key] || ""}
                       onChange={(e) =>
                         setEditor({
@@ -3372,6 +3380,9 @@ export default function Dashboard() {
                         })
                       }
                     />
+                    {editor.suggestions?.[key] && <datalist id={`editor-${key}-options`}>
+                      {editor.suggestions[key].map((value) => <option key={value} value={value} />)}
+                    </datalist>}
                   </label>
                 ))}
               </div>

@@ -1,6 +1,8 @@
 export type JobType = "Import" | "Export";
 export type Row = Record<string, string>;
 export type Job = {
+  importVersion?: number;
+  hiddenColumns?: Record<string, string[]>;
   fields: Record<string, string>;
   containers: Row[];
   income: Row[];
@@ -13,6 +15,48 @@ export type Job = {
   gates?: Row[];
   created?: string;
 };
+export const importMilestones = [
+  "Documentation", "BE Filed", "Assessment", "Examination", "Duty Payment",
+  "OOC", "Gate-out", "Delivery", "Empty Container Return", "Job Completed",
+];
+export const importCustomsMilestones = [
+  "BE Filed", "Assessment", "Examination", "Duty Payment", "OOC", "Delivery",
+  "Empty Container Return",
+];
+const calendarMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+export function calendarInputType(label: string): "date" | "datetime-local" | undefined {
+  if (/\bdate\s*(?:&|and)\s*time\b/i.test(label)) return "datetime-local";
+  if (/\bdate\b|\bcut[- ]?off\b|\b(?:ETA|ETD|ATA|ATD)\b|\bcargo closing\b|\bvalid till\b/i.test(label)) return "date";
+  return undefined;
+}
+
+// Native inputs require ISO values; older drafts and sample voyages use DD-MMM-YYYY.
+// Parse calendar parts directly so dates and local times never shift with timezone.
+export function calendarInputValue(value: string, withTime = false): string {
+  if (!value) return "";
+  const iso = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?$/.exec(value);
+  const legacy = /^(\d{1,2})-([A-Za-z]{3})-(\d{4})(?: (\d{2}):(\d{2}))?$/.exec(value);
+  if (!iso && !legacy) return "";
+  const year = Number(iso ? iso[1] : legacy![3]);
+  const month = iso ? Number(iso[2]) : calendarMonths.findIndex((name) => name.toLowerCase() === legacy![2].toLowerCase()) + 1;
+  const day = Number(iso ? iso[3] : legacy![1]);
+  const hour = Number((iso || legacy)![4] || 0);
+  const minute = Number((iso || legacy)![5] || 0);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (year < 1 || month < 1 || month > 12 || day < 1 || day > days[month - 1] || hour > 23 || minute > 59) return "";
+  const pad = (part: number) => String(part).padStart(2, "0");
+  const date = `${String(year).padStart(4, "0")}-${pad(month)}-${pad(day)}`;
+  return withTime ? `${date}T${pad(hour)}:${pad(minute)}` : date;
+}
+
+export function formatCalendarDate(value: string | undefined) {
+  if (!value) return "–";
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}:\d{2}))?$/.exec(value);
+  if (!match) return value;
+  return `${match[3]}-${calendarMonths[Number(match[2]) - 1]}-${match[1]}${match[4] ? ` ${match[4]}` : ""}`;
+}
 export const steps = [
   "Job Details",
   "Vessel & Voyage",
@@ -64,6 +108,7 @@ export const voyages = [
 export function initialJob(type: JobType): Job {
   const exp = type === "Export";
   return {
+    ...(!exp ? { importVersion: 1, hiddenColumns: {} } : {}),
     cargo: "Containerised",
     activity: exp ? 4 : 3,
     fields: {
@@ -266,6 +311,7 @@ export function initialJob(type: JobType): Job {
           ],
         ]
     ).map((a, i) => ({
+      ...(!exp ? { transporter: "", vehicle: "" } : {}),
       id: String(i + 1),
       number: a[0],
       size: a[1],
@@ -292,6 +338,7 @@ export function initialJob(type: JobType): Job {
     ).map((a, i) => ({
       id: String(i + 1),
       particulars: a[0],
+      ...(!exp ? { date: "" } : {}),
       category: a[1],
       qty: "1",
       rate: a[2],
@@ -323,6 +370,7 @@ export function initialJob(type: JobType): Job {
     ).map((a, i) => ({
       id: String(i + 1),
       particulars: a[0],
+      ...(!exp ? { date: "" } : {}),
       category: a[1],
       qty: "1",
       rate: a[2],
@@ -367,7 +415,7 @@ export function initialJob(type: JobType): Job {
           "Importer",
           "Consignee",
           "Shipper",
-          "Notify Party",
+          "Billing To Party",
           "CHA / Agent",
           "Shipping Line",
           "Freight Forwarder",
@@ -445,8 +493,28 @@ export function restoreDraft(type: JobType, raw: string | null): Job {
       Array.isArray(value.parties) &&
       Array.isArray(value.documents) &&
       Array.isArray(value.duties)
-    )
-      return value;
+    ) {
+      if (type === "Export") return value;
+      const saved = value as Job;
+      const activity = Number.isInteger(saved.activity) ? saved.activity : 0;
+      return {
+        ...saved,
+        importVersion: 1,
+        fields: { ...initialJob(type).fields, ...saved.fields },
+        activity: Math.max(0, Math.min(importMilestones.length,
+          !saved.importVersion && activity >= 8 ? activity + 1 : activity)),
+        hiddenColumns: Object.fromEntries(
+          Object.entries(saved.hiddenColumns || {}).filter(([, columns]) =>
+            Array.isArray(columns) && columns.every((column) => typeof column === "string")),
+        ),
+        containers: saved.containers.map((row) => ({ transporter: "", vehicle: "", ...row })),
+        income: saved.income.map((row) => ({ date: "", ...row })),
+        expense: saved.expense.map((row) => ({ date: "", ...row })),
+        parties: saved.parties.map((row) => ({
+          ...row, role: row.role === "Notify Party" ? "Billing To Party" : row.role,
+        })),
+      };
+    }
   } catch {}
   return initialJob(type);
 }
