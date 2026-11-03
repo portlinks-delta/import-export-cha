@@ -113,7 +113,7 @@ export function CargoTable({
   if (operations)
     return (
       <div className="table-scroll">
-        <Table aria-label="Container operations">
+        <Table aria-label="Container operations" columns={columns}>
           <TableHeader>
             <TableRow>
               {[
@@ -126,6 +126,8 @@ export function CargoTable({
                 "Gate-in Date",
                 "Terminal",
                 "Current Status",
+                "Transporter",
+                "Vehicle Number",
                 "Actions",
               ].map((label) => (
                 <TableHead key={label}>{label}</TableHead>
@@ -148,6 +150,8 @@ export function CargoTable({
                     {r.status}
                   </Badge>
                 </TableCell>
+                <TableCell>{r.transporter || "–"}</TableCell>
+                <TableCell>{r.vehicle || "–"}</TableCell>
                 <TableCell>
                   <Button size="sm" onClick={() => onEdit(r)}>
                     <Pencil size={12} />
@@ -163,10 +167,10 @@ export function CargoTable({
   const editable = !compact && !operations;
   return (
     <div className={`cargo-data-table ${compact ? "read-only" : "editable"}`}>
-      {!exp && <>
+      <>
         <datalist id="container-transporters">{transporters.map((value) => <option key={value} value={value} />)}</datalist>
         <datalist id="container-vehicles">{vehicles.map((value) => <option key={value} value={value} />)}</datalist>
-      </>}
+      </>
       <div className="table-scroll">
         <Table
           columns={columns}
@@ -229,7 +233,7 @@ export function CargoTable({
               <TableHead className="status-cell">
                 {exp ? "Status" : "IMDG"}
               </TableHead>
-              {!exp && <><TableHead>Transporter</TableHead><TableHead>Vehicle Number</TableHead></>}
+              <TableHead>Transporter</TableHead><TableHead>Vehicle Number</TableHead>
               {!compact && (
                 <TableHead className="actions-cell">Actions</TableHead>
               )}
@@ -388,7 +392,7 @@ export function CargoTable({
                       </Badge>
                     )}
                   </TableCell>
-                  {!exp && (["transporter", "vehicle"] as const).map((key) => (
+                  {(["transporter", "vehicle"] as const).map((key) => (
                     <TableCell key={key}>
                       {editable ? <Input className="table-input transport-input"
                         aria-label={`${key === "transporter" ? "Transporter" : "Vehicle number"} row ${i + 1}`}
@@ -439,7 +443,7 @@ export function CargoTable({
               <TableCell className="numeric-cell">
                 {exp ? money(vgm) : vgm.toFixed(2)}
               </TableCell>
-              <TableCell colSpan={(compact ? 1 : 3) + (exp ? 0 : 2)} />
+              <TableCell colSpan={(compact ? 1 : 3) + 2} />
             </TableRow>
           </TableFooter>
         </Table>

@@ -204,7 +204,7 @@ const FormContext = createContext<{
   errors: string[];
   packageTotal: number;
   weightTotal: number;
-}>({ f: {}, field: () => {}, errors: [], packageTotal: 0, weightTotal: 0 });
+}>({ f: {}, field: () => { }, errors: [], packageTotal: 0, weightTotal: 0 });
 function Field({
   name,
   required: mandatory = false,
@@ -336,7 +336,7 @@ export default function Dashboard() {
           localStorage.getItem("portlinks-draft-Export"),
         ),
       });
-    } catch {}
+    } catch { }
     setReady(true);
   }, []);
   useEffect(
@@ -362,7 +362,7 @@ export default function Dashboard() {
     setErrors((e) => e.filter((n) => n !== name));
   }
   function tableColumns(name: string, labels: string[], locked: string[]): TableColumns | undefined {
-    if (exp || step === 7) return undefined;
+    if (step === 7) return undefined;
     return {
       name, labels, locked,
       hidden: job.hiddenColumns?.[name] || [],
@@ -407,14 +407,14 @@ export default function Dashboard() {
     exp
       ? ["Client / Exporter", "Branch / Location", "Assigned To"]
       : [
-          "Client",
-          "Shipment Type",
-          "BL No.",
-          "BL Date",
-          "Assigned To",
-          "Port of Loading (POL)",
-          "Port of Discharge (POD)",
-        ],
+        "Client",
+        "Shipment Type",
+        "BL No.",
+        "BL Date",
+        "Assigned To",
+        "Port of Loading (POL)",
+        "Port of Discharge (POD)",
+      ],
     [
       "Vessel Name",
       "Voyage No.",
@@ -428,13 +428,13 @@ export default function Dashboard() {
     [],
     exp
       ? [
-          "Shipping Bill No.",
-          "Shipping Bill Date",
-          "Shipping Bill Type",
-          "Port Code",
-          "IEC No.",
-          "LEO Status",
-        ]
+        "Shipping Bill No.",
+        "Shipping Bill Date",
+        "Shipping Bill Type",
+        "Port Code",
+        "IEC No.",
+        "LEO Status",
+      ]
       : ["Bill of Entry No.", "BE Date", "BE Type", "Customs Location"],
     [],
     [],
@@ -489,7 +489,7 @@ export default function Dashboard() {
     }
     if (!validate(true)) return;
     try {
-      const id = `CHA/${exp ? "EXP" : "IMP"}/2026/${Date.now().toString().slice(-6)}`;
+      const id = `CHA/${exp ? "EXP" : "IMP" }/2026/${Date.now().toString().slice(-6)}`;
       const created = { ...job, created: id };
       const records = JSON.parse(
         localStorage.getItem("portlinks-jobs") || "[]",
@@ -516,68 +516,68 @@ export default function Dashboard() {
     const specs: [string, string][] =
       key === "containers"
         ? [
-            ["number", "Container No."],
-            ["size", "Size / Type"],
-            ["seal", "Seal No."],
-            ["packages", "Packages"],
-            ["weight", "Gross Weight (KG)"],
-            ["vgm", exp ? "VGM (KG)" : "Volume (CBM)"],
-            ["stuffing", exp ? "Stuffing Type" : "FCL / LCL"],
-            ["status", exp ? "Status" : "IMDG"],
-            ["pickup", "Empty Pickup Date"],
-            ["stuffingDate", "Stuffing Date"],
-            ["stuffingLocation", "Stuffing Location"],
-            ["terminal", "Terminal"],
-            ["gateIn", "Gate-in Date"],
-            ["remarks", "Remarks"],
-          ]
+          ["number", "Container No."],
+          ["size", "Size / Type"],
+          ["seal", "Seal No."],
+          ["packages", "Packages"],
+          ["weight", "Gross Weight (KG)"],
+          ["vgm", exp ? "VGM (KG)" : "Volume (CBM)"],
+          ["stuffing", exp ? "Stuffing Type" : "FCL / LCL"],
+          ["status", exp ? "Status" : "IMDG"],
+          ["pickup", "Empty Pickup Date"],
+          ["stuffingDate", "Stuffing Date"],
+          ["stuffingLocation", "Stuffing Location"],
+          ["terminal", "Terminal"],
+          ["gateIn", "Gate-in Date"],
+          ["remarks", "Remarks"],
+        ]
         : key === "duties"
           ? [
-              ["head", "Duty Head"],
-              ["amount", "Amount (INR)"],
-              ["challan", "Challan No."],
-              ["date", "Challan Date"],
-              ["status", "Payment Status"],
-              ["payment", "Payment Date"],
-              ["remarks", "Remarks"],
-            ]
+            ["head", "Duty Head"],
+            ["amount", "Amount (INR)"],
+            ["challan", "Challan No."],
+            ["date", "Challan Date"],
+            ["status", "Payment Status"],
+            ["payment", "Payment Date"],
+            ["remarks", "Remarks"],
+          ]
           : [
-              ["particulars", "Particulars"],
-              ["category", "Category"],
-              ["qty", "Quantity"],
-              ["rate", "Rate (INR)"],
-              ["gst", "GST %"],
-              ["party", key === "income" ? "Customer" : "Vendor"],
-              ["status", "Payment Status"],
-              ["remarks", "Remarks"],
-            ];
-    if (!exp && key === "containers") specs.push(["transporter", "Transporter"], ["vehicle", "Vehicle Number"]);
-    if (!exp && (key === "income" || key === "expense")) specs.push(["date", "Date"]);
+            ["particulars", "Particulars"],
+            ["category", "Category"],
+            ["qty", "Quantity"],
+            ["rate", "Rate (INR)"],
+            ["gst", "GST %"],
+            ["party", key === "income" ? "Customer" : "Vendor"],
+            ["status", "Payment Status"],
+            ["remarks", "Remarks"],
+          ];
+    if (key === "containers") specs.push(["transporter", "Transporter"], ["vehicle", "Vehicle Number"]);
+    if (key === "income" || key === "expense") specs.push(["date", "Date"]);
     setEditor({
-      suggestions: !exp && key === "containers" ? { transporter: transporterOptions, vehicle: vehicleOptions } : {},
+      suggestions: key === "containers" ? { transporter: transporterOptions, vehicle: vehicleOptions } : {},
       title: `${row ? "Edit" : "Add"} ${key === "containers" ? "Container" : key === "duties" ? "Duty" : key === "income" ? "Income" : "Expense"}`,
       fields: specs,
       values: row
         ? { ...row }
         : {
-            id: crypto.randomUUID(),
-            qty: "1",
-            gst: exp ? "18" : "0",
-            packages: "0",
-            weight: "0",
-            vgm: "0",
-            stuffing: exp ? "Factory Stuffing" : "FCL",
-            status:
-              key === "containers"
-                ? exp
-                  ? "Ready for Gate-in"
-                  : "No"
-                : key === "duties"
-                  ? "Pending"
-                  : key === "income"
-                    ? "Unbilled"
-                    : "Unpaid",
-          },
+          id: crypto.randomUUID(),
+          qty: "1",
+          gst: exp ? "18" : "0",
+          packages: "0",
+          weight: "0",
+          vgm: "0",
+          stuffing: exp ? "Factory Stuffing" : "FCL",
+          status:
+            key === "containers"
+              ? exp
+                ? "Ready for Gate-in"
+                : "No"
+              : key === "duties"
+                ? "Pending"
+                : key === "income"
+                  ? "Unbilled"
+                  : "Unpaid",
+        },
       save: (r) => {
         const numeric =
           key === "containers"
@@ -639,9 +639,9 @@ export default function Dashboard() {
     );
   }
   const packageTotal = job.containers.reduce(
-      (a, r) => a + number(r.packages),
-      0,
-    ),
+    (a, r) => a + number(r.packages),
+    0,
+  ),
     weightTotal = job.containers.reduce((a, r) => a + number(r.weight), 0),
     vgmTotal = job.containers.reduce((a, r) => a + number(r.vgm), 0),
     inc = totals(job.income),
@@ -662,7 +662,13 @@ export default function Dashboard() {
         operations={operations}
         transporters={transporterOptions}
         vehicles={vehicleOptions}
-        columns={compact || operations ? undefined : tableColumns("Cargo", [
+        columns={compact ? undefined : operations ? tableColumns("Container operations", [
+          "#", "Container No.", "Size/Type", "Seal No.", "Stuffing Date", "VGM (KG)",
+          "Gate-in Date", "Terminal", "Current Status", "Transporter", "Vehicle Number", "Actions",
+        ], ["Container No.", "Actions"]) : tableColumns("Cargo", exp ? [
+          "Select", "#", "Container No.", "Size/Type", "Seal No.", "Packages",
+          "Gross Weight", "VGM (KG)", "Stuffing Type", "Status", "Transporter", "Vehicle Number", "Actions",
+        ] : [
           "Select", "Sr. No.", "Container No.", "Size/Type", "Seal No.", "No. of Packages",
           "Gross Weight", "Volume", "FCL/LCL", "IMDG", "Transporter", "Vehicle Number", "Actions",
         ], ["Select", "Container No.", "Actions"])}
@@ -695,7 +701,8 @@ export default function Dashboard() {
     return (
       <div className="table-scroll">
         <Table columns={compact ? undefined : tableColumns(kind === "income" ? "Income" : "Expenses",
-          ["#", "Particulars", "Date", kind === "income" ? "Service Type" : "Expense Type", "Quantity", "Rate (INR)", "Amount (INR)", "Remarks", "Actions"],
+          exp ? ["#", "Particulars", "Date", "Category", "Qty", "Rate (INR)", "Amount (INR)", "GST %", "GST Amount", "Total (INR)", kind === "income" ? "Customer" : "Vendor", "Payment Status", "Actions"] :
+            ["#", "Particulars", "Date", kind === "income" ? "Service Type" : "Expense Type", "Quantity", "Rate (INR)", "Amount (INR)", "Remarks", "Actions"],
           ["Particulars", "Actions"])}>
           <TableHeader>
             <TableRow>
@@ -703,7 +710,7 @@ export default function Dashboard() {
               <TableHead>
                 Particulars <b>*</b>
               </TableHead>
-              {!exp && <TableHead>Date</TableHead>}
+              <TableHead>Date</TableHead>
               {!compact && (
                 <>
                   <TableHead>
@@ -717,7 +724,7 @@ export default function Dashboard() {
                   <TableHead>Rate (INR)</TableHead>
                 </>
               )}
-              <TableHead>Amount (INR)</TableHead>
+              <TableHead>{compact && exp ? "Total (INR)" : "Amount (INR)"}</TableHead>
               {!compact && exp && (
                 <>
                   <TableHead>GST %</TableHead>
@@ -741,7 +748,7 @@ export default function Dashboard() {
                 <TableRow key={r.id}>
                   <TableCell>{i + 1}</TableCell>
                   <TableCell>{r.particulars}</TableCell>
-                  {!exp && <TableCell>{formatCalendarDate(r.date)}</TableCell>}
+                  <TableCell>{formatCalendarDate(r.date)}</TableCell>
                   {!compact && (
                     <>
                       <TableCell>{r.category}</TableCell>
@@ -749,7 +756,7 @@ export default function Dashboard() {
                       <TableCell>{money(number(r.rate))}</TableCell>
                     </>
                   )}
-                  <TableCell>{money(base)}</TableCell>
+                  <TableCell>{money(compact && exp ? base + gst : base)}</TableCell>
                   {!compact && exp && (
                     <>
                       <TableCell>{r.gst}%</TableCell>
@@ -778,11 +785,11 @@ export default function Dashboard() {
           </TableBody>
           <TableFooter>
             <TableRow>
-              <TableCell colSpan={(compact ? 2 : 5) + (exp ? 0 : 1)}>
+              <TableCell colSpan={compact ? 3 : 6}>
                 Total{" "}
                 {compact ? (kind === "income" ? "Income" : "Expense") : ""}
               </TableCell>
-              <TableCell>{money(t.base)}</TableCell>
+              <TableCell>{money(compact && exp ? t.total : t.base)}</TableCell>
               {!compact && exp && (
                 <>
                   <TableCell />
@@ -846,13 +853,17 @@ export default function Dashboard() {
                         <Button
                           size="icon"
                           aria-label={`View ${r.name}`}
+                          title="View document"
                           onClick={() => viewDocument(r)}
                         >
                           <Eye size={13} />
                         </Button>
+                        {exp && <Button size="icon" aria-label={`Download ${r.name}`} title="Download document"
+                          onClick={() => downloadDocument(r)}><Download size={13} /></Button>}
                         <Button
                           size="icon"
                           aria-label={`Remove ${r.name}`}
+                          title="Delete document"
                           className="delete"
                           onClick={() =>
                             update({
@@ -888,6 +899,19 @@ export default function Dashboard() {
         : "This is a sample document entry. Upload your own file to view its contents.",
     });
   }
+  function downloadDocument(r: Row) {
+    const url = localFiles.current.get(r.id);
+    if (!url) {
+      viewDocument(r);
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = r.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
   function addFiles(files: FileList | null) {
     if (!files) return;
     const allowed = /\.(pdf|docx?|xlsx?|jpe?g|png)$/i;
@@ -916,18 +940,18 @@ export default function Dashboard() {
   function Timeline({ small = false }: { small?: boolean }) {
     const labels = exp
       ? [
-          "Booking Confirmed",
-          "Docs Received",
-          "Shipping Bill Filed",
-          "Container Allocation",
-          "Stuffing",
-          "Gate-in",
-          "Examination",
-          "LEO",
-          "Loaded on Vessel",
-          "Vessel Sailed",
-          "BL Issued",
-        ]
+        "Booking Confirmed",
+        "Docs Received",
+        "Shipping Bill Filed",
+        "Container Allocation",
+        "Stuffing",
+        "Gate-in",
+        "Examination",
+        "LEO",
+        "Loaded on Vessel",
+        "Vessel Sailed",
+        "BL Issued",
+      ]
       : importMilestones;
     return (
       <div className={`timeline ${small ? "mini" : ""}`}>
@@ -1009,6 +1033,7 @@ export default function Dashboard() {
         <Panel title="Basic Job Information" icon={BriefcaseBusiness}>
           <div className="fields export-basics">
             <Field name="Client / Exporter" required select />
+            <Field name="Shipment Type" />
             <Field name="Booking No." />
             <Field name="Booking Date" />
             <Field name="Shipping Bill No." />
@@ -1023,7 +1048,7 @@ export default function Dashboard() {
               GSTIN: 24ABCDE1234F1Z5　 |　 IEC: ABCDE1234F　 |　 PAN: ABCDE1234F
             </p>
             <p>
-              Contact: Mr. Ramesh Patel　 |　 +91 98765 43210　 |　
+              Contact: Mr. Ramesh Patel　 |　 +91 98765 43210　 |
               ramesh@abcexports.com
             </p>
           </div>
@@ -1058,6 +1083,7 @@ export default function Dashboard() {
               "Shipping Instruction (SI) Date",
               "VGM Cut-off",
               "SI Cut-off",
+              "Doc Handover Cutoff",
               "Gate-in Cut-off",
               "ETD (from POL)",
               "ETA (at POD)",
@@ -1310,10 +1336,10 @@ export default function Dashboard() {
                 {voyages.filter((v) =>
                   v.join(" ").toLowerCase().includes(query.toLowerCase()),
                 ).length === 0 && (
-                  <p className="empty">
-                    No voyages found. Try another search or enter a new voyage.
-                  </p>
-                )}
+                    <p className="empty">
+                      No voyages found. Try another search or enter a new voyage.
+                    </p>
+                  )}
               </div>
             </Panel>
             <Panel title="Selected Voyage Details" icon={Ship}>
@@ -1469,22 +1495,9 @@ export default function Dashboard() {
           <Panel
             title="Container Level Details (Optional)"
             icon={ClipboardList}
-            action={
-              <Button
-                size="sm"
-                onClick={() =>
-                  setMessage({
-                    title: "Container columns",
-                    text: "Container number, pickup date, stuffing location, stuffing date, VGM, terminal and gate-in date are shown. Edit a container to update its main details.",
-                  })
-                }
-              >
-                Show/Hide Columns
-              </Button>
-            }
           >
             <div className="table-scroll">
-              <Table>
+              <Table columns={tableColumns("Container details", ["#", "Container No.", "Empty Pickup Date", "Stuffing Location", "Stuffing Date", "VGM (KG)", "Terminal", "Gate-in Date", "Remarks", "Actions"], ["Container No.", "Actions"])}>
                 <TableHeader>
                   <TableRow>
                     {[
@@ -1725,18 +1738,9 @@ export default function Dashboard() {
               ]}
             />
           </Panel>
-          <Panel title="IGM / CUS Details (Optional)" icon={FileText}>
-            <Fields
-              cols={2}
-              names={[
-                "IGM No.",
-                "IGM Date",
-                "CUS No.",
-                "CUS Date",
-                "FOB (As per CUS)",
-              ]}
-            />
-            <Field name="IGM Remarks" area />
+          <Panel title="EGM / CUS Details (Optional)" icon={FileText}>
+            <Fields cols={2} names={["EGM Number", "EGM Date", "CUS No.", "CUS Date", "FOB (As per CUS)"]} />
+            <Field name="EGM Remarks" area />
           </Panel>
         </div>
         <div className="fields cols-3">
@@ -1868,10 +1872,10 @@ export default function Dashboard() {
         values: row
           ? { ...row }
           : {
-              id: crypto.randomUUID(),
-              activity: "Gate-in",
-              location: "Terminal",
-            },
+            id: crypto.randomUUID(),
+            activity: "Gate-in",
+            location: "Terminal",
+          },
         save: (r) => {
           if (!r.container?.trim() || !r.activity?.trim()) {
             setToast("Container and activity are required");
@@ -1989,38 +1993,38 @@ export default function Dashboard() {
                     names={
                       operationTab === "Stuffing Details"
                         ? [
-                            "Stuffing Type",
-                            "Stuffing Date",
-                            "Stuffing Location",
-                            "Stuffing Supervisor",
-                          ]
+                          "Stuffing Type",
+                          "Stuffing Date",
+                          "Stuffing Location",
+                          "Stuffing Supervisor",
+                        ]
                         : operationTab === "Gate-in & Terminal"
                           ? [
-                              "Gate-in Date",
-                              "Terminal",
-                              "Gate Pass No.",
-                              "Weighbridge Slip No.",
-                            ]
+                            "Gate-in Date",
+                            "Terminal",
+                            "Gate Pass No.",
+                            "Weighbridge Slip No.",
+                          ]
                           : operationTab === "Examination"
                             ? [
-                                "Examination Status",
-                                "Examination Date",
-                                "Exam Location",
-                                "Examiner Name",
-                              ]
+                              "Examination Status",
+                              "Examination Date",
+                              "Exam Location",
+                              "Examiner Name",
+                            ]
                             : operationTab === "Loading & Sailing"
                               ? [
-                                  "Loaded on Vessel Date",
-                                  "Vessel Sailed Date",
-                                  "BL No.",
-                                  "BL Date",
-                                ]
+                                "Loaded on Vessel Date",
+                                "Vessel Sailed Date",
+                                "BL No.",
+                                "BL Date",
+                              ]
                               : [
-                                  "Operation Type",
-                                  "Operation Date",
-                                  "Reference No.",
-                                  "Operation Remarks",
-                                ]
+                                "Operation Type",
+                                "Operation Date",
+                                "Reference No.",
+                                "Operation Remarks",
+                              ]
                     }
                   />
                 )}
@@ -2164,18 +2168,18 @@ export default function Dashboard() {
   function ActivityHistory() {
     const labels = exp
       ? [
-          "Booking Confirmed",
-          "Docs Received",
-          "Shipping Bill Filed",
-          "Container Allocation",
-          "Stuffing",
-          "Gate-in",
-          "Examination",
-          "LEO",
-          "Loaded on Vessel",
-          "Vessel Sailed",
-          "BL Issued",
-        ]
+        "Booking Confirmed",
+        "Docs Received",
+        "Shipping Bill Filed",
+        "Container Allocation",
+        "Stuffing",
+        "Gate-in",
+        "Examination",
+        "LEO",
+        "Loaded on Vessel",
+        "Vessel Sailed",
+        "BL Issued",
+      ]
       : importMilestones;
     return (
       <div className="table-scroll">
@@ -2338,7 +2342,7 @@ export default function Dashboard() {
   }
   function Review() {
     return (
-      <div className={`review-grid ${exp?"review-export":"review-import"}`}>
+      <div className={`review-grid ${exp ? "review-export" : "review-import"}`}>
         <Panel
           title="Job Details"
           icon={FileText}
@@ -2356,6 +2360,7 @@ export default function Dashboard() {
               exp ? "Client / Exporter" : "Client",
               exp ? "Booking No." : "BL No.",
               "Job Date",
+              ...(exp ? ["Shipment Type", "Doc Handover Cutoff"] : []),
               "Job Reference",
               "Assigned To",
               "Priority",
@@ -2452,26 +2457,32 @@ export default function Dashboard() {
             names={
               exp
                 ? [
-                    "Shipping Bill No.",
-                    "Shipping Bill Date",
-                    "Shipping Bill Type",
-                    "Port Code",
-                    "IEC No.",
-                    "FOB Value",
-                    "Assessment Status",
-                    "Examination Status",
-                    "LEO Status",
-                  ]
+                  "Shipping Bill No.",
+                  "Shipping Bill Date",
+                  "Shipping Bill Type",
+                  "Port Code",
+                  "IEC No.",
+                  "FOB Value",
+                  "Assessment Status",
+                  "Examination Status",
+                  "LEO Status",
+                  "EGM Number",
+                  "EGM Date",
+                  "EGM Remarks",
+                  "CUS No.",
+                  "CUS Date",
+                  "FOB (As per CUS)",
+                ]
                 : [
-                    "Bill of Entry No.",
-                    "BE Date",
-                    "BE Type",
-                    "Assessment Status",
-                    "Assessment Date",
-                    "Examination Status",
-                    "Examination Date",
-                    "OOC Status",
-                  ]
+                  "Bill of Entry No.",
+                  "BE Date",
+                  "BE Type",
+                  "Assessment Status",
+                  "Assessment Date",
+                  "Examination Status",
+                  "Examination Date",
+                  "OOC Status",
+                ]
             }
           />
         </Panel>
@@ -2506,12 +2517,10 @@ export default function Dashboard() {
           }
         >
           <StatCards />
-          {!exp && (
-            <div className="fields cols-2">
-              {FinancialTable({ kind: "income", compact: true })}
-              {FinancialTable({ kind: "expense", compact: true })}
-            </div>
-          )}
+          <div className="fields cols-2">
+            {FinancialTable({ kind: "income", compact: true })}
+            {FinancialTable({ kind: "expense", compact: true })}
+          </div>
         </Panel>
         {exp && Documents({ title: "Documents" })}
       </div>
@@ -2521,39 +2530,39 @@ export default function Dashboard() {
     const items =
       step === 1
         ? [
-            "View Full Voyage Details",
-            "Create New Voyage",
-            "Import Voyage Data",
-            "Manage Voyages",
-          ]
+          "View Full Voyage Details",
+          "Create New Voyage",
+          "Import Voyage Data",
+          "Manage Voyages",
+        ]
         : step === 6
           ? [
-              "View Income Report",
-              "View Expense Report",
-              "Export to Billing",
-              "Download Financial Summary",
-            ]
+            "View Income Report",
+            "View Expense Report",
+            "Export to Billing",
+            "Download Financial Summary",
+          ]
           : step === 7
             ? [
-                "Download Job Summary",
-                "Download Checklist",
-                "Save as Template",
-                "Clone Job",
-              ]
+              "Download Job Summary",
+              "Download Checklist",
+              "Save as Template",
+              "Clone Job",
+            ]
             : step === 4
               ? exp
                 ? [
-                    "Fetch SB from ICEGATE",
-                    "Validate SB Details",
-                    "Download SB Acknowledgement",
-                  ]
+                  "Fetch SB from ICEGATE",
+                  "Validate SB Details",
+                  "Download SB Acknowledgement",
+                ]
                 : ["View BE Document", "View Duty Challan"]
               : [
-                  "Import Data",
-                  "Copy from Existing Job",
-                  "Fetch from Vessel/Voyage",
-                  "Upload Documents",
-                ];
+                "Import Data",
+                "Copy from Existing Job",
+                "Fetch from Vessel/Voyage",
+                "Upload Documents",
+              ];
     return (
       <div className="quick-actions">
         {items.map((x, i) => (
@@ -2627,9 +2636,9 @@ export default function Dashboard() {
               ],
               ...(step > 0
                 ? [
-                    ["Vessel", f["Vessel Name"]],
-                    ["Voyage", f["Voyage No."]],
-                  ]
+                  ["Vessel", f["Vessel Name"]],
+                  ["Voyage", f["Voyage No."]],
+                ]
                 : []),
               [
                 "POL → POD",
@@ -2801,22 +2810,23 @@ export default function Dashboard() {
                 const done = exp ? i < 3 : milestone < job.activity;
                 const current = !exp && milestone === job.activity;
                 return (
-                <button
-                  key={s}
-                  className={done ? "done" : current ? "active" : ""}
-                  onClick={() =>
-                    setToast(`${s}: ${done ? "Completed" : current ? "In Progress" : "Pending"}`)
-                  }
-                >
-                  <span>{done ? <Check size={14} /> : i + 1}</span>
-                  <div>
-                    <strong>{s}</strong>
-                    <small>
-                      {exp && done ? "09-Sep-2026 · By Rahul Sharma" : done ? "Completed" : current ? "In Progress" : "Pending"}
-                    </small>
-                  </div>
-                </button>
-              ); })}
+                  <button
+                    key={s}
+                    className={done ? "done" : current ? "active" : ""}
+                    onClick={() =>
+                      setToast(`${s}: ${done ? "Completed" : current ? "In Progress" : "Pending"}`)
+                    }
+                  >
+                    <span>{done ? <Check size={14} /> : i + 1}</span>
+                    <div>
+                      <strong>{s}</strong>
+                      <small>
+                        {exp && done ? "09-Sep-2026 · By Rahul Sharma" : done ? "Completed" : current ? "In Progress" : "Pending"}
+                      </small>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </section>
         ) : null}
@@ -2832,15 +2842,15 @@ export default function Dashboard() {
   }
   const subtitle = exp
     ? [
-        "Create a new Export job for containerised cargo. Enter job basic details to get started.",
-        "Create a new Export job for containerised cargo. Enter vessel and voyage details.",
-        "Create a new Export job for containerised cargo. Enter container and cargo details.",
-        "Create a new Export job for containerised cargo. Add all related parties for this shipment.",
-        "Create a new Export job for containerised cargo. Enter customs and clearance details.",
-        "Track operational activities, container movement and key milestones for this export job.",
-        "Add job-wise income and expense details. These entries will be used for billing, profitability and financial tracking.",
-        "Review all details before creating the export job. You can go back to any step and make changes.",
-      ][step]
+      "Create a new Export job for containerised cargo. Enter job basic details to get started.",
+      "Create a new Export job for containerised cargo. Enter vessel and voyage details.",
+      "Create a new Export job for containerised cargo. Enter container and cargo details.",
+      "Create a new Export job for containerised cargo. Add all related parties for this shipment.",
+      "Create a new Export job for containerised cargo. Enter customs and clearance details.",
+      "Track operational activities, container movement and key milestones for this export job.",
+      "Add job-wise income and expense details. These entries will be used for billing, profitability and financial tracking.",
+      "Review all details before creating the export job. You can go back to any step and make changes.",
+    ][step]
     : "Create a new Import/Export job for vessel voyage";
   const StepIcon = stepIcons[step];
   return (
@@ -3129,7 +3139,7 @@ export default function Dashboard() {
                     </div>
                   )}
                   <section
-                    className={`screen-content screen-step-${step} ${exp?"export-flow":"import-flow"} ${!exp && step === 0 ? "import-basics" : ""}`}
+                    className={`screen-content screen-step-${step} ${exp ? "export-flow" : "import-flow"} ${!exp && step === 0 ? "import-basics" : ""}`}
                     ref={formRef}
                   >
                     <div className="screen-heading">
@@ -3162,9 +3172,9 @@ export default function Dashboard() {
                               onClick={() =>
                                 exp
                                   ? setMessage({
-                                      title: "Search Voyage",
-                                      text: "For this export prototype, edit the vessel and voyage fields below. The Import workflow includes a searchable sample voyage table.",
-                                    })
+                                    title: "Search Voyage",
+                                    text: "For this export prototype, edit the vessel and voyage fields below. The Import workflow includes a searchable sample voyage table.",
+                                  })
                                   : setVoyageMode("new")
                               }
                             >
@@ -3239,18 +3249,18 @@ export default function Dashboard() {
                                   title: "Operation Timeline",
                                   text: (exp
                                     ? [
-                                        "Booking Confirmed",
-                                        "Docs Received",
-                                        "Shipping Bill Filed",
-                                        "Container Allocation",
-                                        "Stuffing",
-                                        "Gate-in",
-                                        "Examination",
-                                        "LEO",
-                                        "Loaded on Vessel",
-                                        "Vessel Sailed",
-                                        "BL Issued",
-                                      ]
+                                      "Booking Confirmed",
+                                      "Docs Received",
+                                      "Shipping Bill Filed",
+                                      "Container Allocation",
+                                      "Stuffing",
+                                      "Gate-in",
+                                      "Examination",
+                                      "LEO",
+                                      "Loaded on Vessel",
+                                      "Vessel Sailed",
+                                      "BL Issued",
+                                    ]
                                     : importMilestones
                                   )
                                     .map(

@@ -153,7 +153,7 @@ test("new income and expense dates can be added, cleared, and saved", async ({ p
   }
 });
 
-test("mobile Import controls fit and Export keeps its existing fields", async ({ page }, testInfo) => {
+test("mobile Import controls fit and Export stays independent", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await start(page);
   await section(page, "3 Cargo Details");
@@ -163,15 +163,16 @@ test("mobile Import controls fit and Export keeps its existing fields", async ({
   await page.screenshot({ path: testInfo.outputPath("import-cargo-mobile.png"), fullPage: true });
   await page.getByRole("button", { name: "Export", exact: true }).click();
   await section(page, "3 Cargo Details");
-  await expect(page.locator(".column-picker")).toHaveCount(0);
-  await expect(page.getByLabel("Transporter row 1", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Cargo columns", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Transporter row 1", { exact: true })).toHaveValue("");
   await section(page, "4 Parties");
   await expect(page.getByRole("heading", { name: "Notify Party", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Billing Party", exact: true })).toBeVisible();
   await section(page, "5 Customs & Clearance");
-  await expect(page.getByRole("heading", { name: "IGM / CUS Details (Optional)", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "EGM / CUS Details (Optional)", exact: true })).toBeVisible();
   await expect(page.getByText("Empty Container Return", { exact: true })).toHaveCount(0);
   await section(page, "7 Income & Expense");
-  await expect(page.locator(".column-picker")).toHaveCount(0);
+  await expect(page.getByLabel("Income columns", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Add Income", exact: true }).click();
-  await expect(page.getByRole("dialog").getByLabel("Date", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("dialog").getByLabel("Date", { exact: true })).toHaveAttribute("type", "date");
 });

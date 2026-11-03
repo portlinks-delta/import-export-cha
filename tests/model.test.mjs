@@ -49,14 +49,43 @@ test("missing optional fields restore blank, malformed preferences are ignored",
   assert.deepEqual(restoreDraft("Import", "bad json"), initialJob("Import"));
 });
 
-test("Export drafts are unchanged", () => {
+test("Export drafts keep Notify Party separate from Billing Party", () => {
   const job = initialJob("Export");
   assert.equal(job.parties[3].role, "Notify Party");
   assert.equal(job.importVersion, undefined);
-  assert.equal(job.containers[0].transporter, undefined);
-  assert.equal(job.income[0].date, undefined);
-  job.fields["IGM No."] = "123";
+  assert.equal(job.containers[0].transporter, "");
+  assert.equal(job.income[0].date, "");
+  assert.equal(job.parties.find((party) => party.role === "Billing Party").name, "");
+  job.fields["EGM Number"] = "123";
   assert.deepEqual(restoreDraft("Export", JSON.stringify(job)), job);
+});
+
+test("legacy Export drafts migrate IGM fields and preserve company details", () => {
+  const job = initialJob("Export");
+  job.parties = job.parties.filter((party) => party.role !== "Billing Party");
+  delete job.hiddenColumns;
+  for (const key of ["EGM Number", "EGM Date", "EGM Remarks", "Doc Handover Cutoff"]) delete job.fields[key];
+  job.fields["IGM No."] = "LEGACY-123";
+  job.fields["IGM Date"] = "09-Sep-2026";
+  job.fields["IGM Remarks"] = "Existing remarks";
+  delete job.containers[0].transporter;
+  delete job.income[0].date;
+  const restored = restoreDraft("Export", JSON.stringify(job));
+  assert.equal(restored.fields["EGM Number"], "LEGACY-123");
+  assert.equal(restored.fields["EGM Date"], "09-Sep-2026");
+  assert.equal(restored.fields["EGM Remarks"], "Existing remarks");
+  assert.equal(restored.fields["Doc Handover Cutoff"], "");
+  assert.equal(restored.containers[0].transporter, "");
+  assert.equal(restored.income[0].date, "");
+  assert.deepEqual(restored.parties.filter((party) => party.role !== "Billing Party"), job.parties);
+  restored.fields["EGM Number"] = "NEW-456";
+  restored.fields["EGM Remarks"] = "";
+  restored.parties.find((party) => party.role === "Billing Party").name = "Billing Company";
+  const again = restoreDraft("Export", JSON.stringify(restored));
+  assert.equal(again.fields["EGM Number"], "NEW-456");
+  assert.equal(again.fields["EGM Remarks"], "");
+  assert.equal(again.parties.filter((party) => party.role === "Billing Party").length, 1);
+  assert.deepEqual(again, restored);
 });
 
 test("calendar display preserves the selected day without timezone conversion", () => {

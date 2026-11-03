@@ -67,6 +67,9 @@ export const steps = [
   "Income & Expense",
   "Review & Save",
 ];
+function emptyBillingParty() {
+  return { id: "export-billing-party", role: "Billing Party", name: "", address: "", tax: "", phone: "", email: "" };
+}
 export const voyages = [
   [
     "MV MSC EXAMPLE",
@@ -108,10 +111,12 @@ export const voyages = [
 export function initialJob(type: JobType): Job {
   const exp = type === "Export";
   return {
-    ...(!exp ? { importVersion: 1, hiddenColumns: {} } : {}),
+    ...(!exp ? { importVersion: 1 } : {}),
+    hiddenColumns: {},
     cargo: "Containerised",
     activity: exp ? 4 : 3,
     fields: {
+      ...(exp ? { "Doc Handover Cutoff": "", "EGM Number": "", "EGM Date": "", "EGM Remarks": "" } : {}),
       Client: exp ? "ABC Exports Pvt. Ltd." : "ABC Logistics Pvt. Ltd.",
       "Client / Exporter": "ABC Exports Pvt. Ltd.",
       "Job Date": "09-Sep-2026",
@@ -311,7 +316,7 @@ export function initialJob(type: JobType): Job {
           ],
         ]
     ).map((a, i) => ({
-      ...(!exp ? { transporter: "", vehicle: "" } : {}),
+      transporter: "", vehicle: "",
       id: String(i + 1),
       number: a[0],
       size: a[1],
@@ -338,7 +343,7 @@ export function initialJob(type: JobType): Job {
     ).map((a, i) => ({
       id: String(i + 1),
       particulars: a[0],
-      ...(!exp ? { date: "" } : {}),
+      date: "",
       category: a[1],
       qty: "1",
       rate: a[2],
@@ -370,7 +375,7 @@ export function initialJob(type: JobType): Job {
     ).map((a, i) => ({
       id: String(i + 1),
       particulars: a[0],
-      ...(!exp ? { date: "" } : {}),
+      date: "",
       category: a[1],
       qty: "1",
       rate: a[2],
@@ -451,7 +456,7 @@ export function initialJob(type: JobType): Job {
       tax: "24ABCDE1234F1Z5",
       phone: "+91 98765 43210",
       email: exp ? "ramesh@abcexports.com" : "ramesh@abcind.com",
-    })),
+    })).concat(exp ? [emptyBillingParty()] : []),
     documents: (exp
       ? ["Proforma Invoice.pdf", "Packing List.pdf", "Export Contract.pdf"]
       : ["BE Copy.pdf", "Exam Report.pdf"]
@@ -494,8 +499,25 @@ export function restoreDraft(type: JobType, raw: string | null): Job {
       Array.isArray(value.documents) &&
       Array.isArray(value.duties)
     ) {
-      if (type === "Export") return value;
       const saved = value as Job;
+      if (type === "Export") {
+        return {
+          ...saved,
+          fields: {
+            ...initialJob(type).fields, ...saved.fields,
+            "EGM Number": saved.fields["EGM Number"] ?? saved.fields["EGM No."] ?? saved.fields["IGM No."] ?? "",
+            "EGM Date": saved.fields["EGM Date"] ?? saved.fields["IGM Date"] ?? "",
+            "EGM Remarks": saved.fields["EGM Remarks"] ?? saved.fields["IGM Remarks"] ?? "",
+          },
+          hiddenColumns: Object.fromEntries(Object.entries(saved.hiddenColumns || {}).filter(([, columns]) =>
+            Array.isArray(columns) && columns.every((column) => typeof column === "string"))),
+          containers: saved.containers.map((row) => ({ transporter: "", vehicle: "", ...row })),
+          income: saved.income.map((row) => ({ date: "", ...row })),
+          expense: saved.expense.map((row) => ({ date: "", ...row })),
+          parties: saved.parties.some((row) => row.role === "Billing Party")
+            ? saved.parties : [...saved.parties, emptyBillingParty()],
+        };
+      }
       const activity = Number.isInteger(saved.activity) ? saved.activity : 0;
       return {
         ...saved,

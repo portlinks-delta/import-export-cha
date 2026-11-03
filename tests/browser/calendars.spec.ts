@@ -22,15 +22,15 @@ for (const type of ["Import", "Export"]) {
       ["6 Operations", ["Examination Date"]],
       ["7 Income & Expense", ["Expected Payment Date"]],
     ] as const : [
-      ["1 Job Details", ["Booking Date", "SB Date", "BL Date", "Shipping Instruction (SI) Date", "VGM Cut-off", "SI Cut-off", "Gate-in Cut-off", "ETD (from POL)", "ETA (at POD)"]],
+      ["1 Job Details", ["Booking Date", "SB Date", "BL Date", "Shipping Instruction (SI) Date", "VGM Cut-off", "SI Cut-off", "Doc Handover Cutoff", "Gate-in Cut-off", "ETD (from POL)", "ETA (at POD)"]],
       ["2 Vessel & Voyage", ["ETD (from POL)", "ATD (from POL)", "ETA (at POD)", "ATA (at POD)", "Shipping Instruction (SI) Cut-off", "VGM Cut-off", "Gate-in Cut-off", "Port Cut-off", "Customs Cut-off (SB Filing)", "Cargo Closing"]],
-      ["5 Customs & Clearance", ["Shipping Bill Date", "IGM Date", "CUS Date", "Assessment Date", "Examination Date", "LEO Date", "LEO Valid Till"]],
+      ["5 Customs & Clearance", ["Shipping Bill Date", "EGM Date", "CUS Date", "Assessment Date", "Examination Date", "LEO Date", "LEO Valid Till"]],
       ["6 Operations", ["Empty Pickup Date", "Stuffing Date", "Gate-in Date", "Loaded on Vessel Date", "Vessel Sailed Date", "BL Date", "Operation Date"]],
     ] as const;
     for (const [step, labels] of groups) {
       await section(page, step);
       for (const label of labels) {
-        await expect(screen.getByLabel(label, { exact: true }).first(), `${type}: ${label}`).toHaveAttribute("type", "date");
+        await expect(screen.getByLabel(label, { exact: true }).and(screen.locator(".field input")).first(), `${type}: ${label}`).toHaveAttribute("type", "date");
       }
     }
 
